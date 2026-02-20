@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Article Sorter - With Instructions</title>
+    <title>Article Sorter - Instant Restart</title>
     <style>
         body { 
             margin: 0; 
@@ -35,7 +35,7 @@
     // Game State
     let score = 0;
     let gameOver = false;
-    let gameStarted = false; // NEW: Pauses the game at the start
+    let gameStarted = false; 
     let isNewHighScore = false;
     
     let highScore = localStorage.getItem('germanVocabHighScore') || 0;
@@ -65,6 +65,16 @@
             speed: 2 + (score * 0.2) 
         };
     }
+
+    // --- NEW: Reset Game Function ---
+    function resetGame() {
+        score = 0;
+        gameOver = false;
+        isNewHighScore = false;
+        particles = [];
+        spawnWord();
+    }
+    // --------------------------------
 
     function createParticles(x, y) {
         for (let i = 0; i < 15; i++) {
@@ -105,7 +115,6 @@
         }
     }
 
-    // Controls Logic
     function handleInput(direction) {
         if (!gameStarted || gameOver || !currentWord) return;
 
@@ -125,9 +134,14 @@
 
     // Keyboard Controls
     window.addEventListener('keydown', (e) => {
-        // Start game on any key press
         if (!gameStarted) {
             gameStarted = true;
+            return;
+        }
+
+        // --- NEW: Restart on key press if game over ---
+        if (gameOver) {
+            resetGame();
             return;
         }
 
@@ -141,9 +155,14 @@
     let touchStartY = 0;
 
     canvas.addEventListener('touchstart', (e) => {
-        // Start game on tap
         if (!gameStarted) {
             gameStarted = true;
+            return;
+        }
+
+        // --- NEW: Restart on tap if game over ---
+        if (gameOver) {
+            resetGame();
             return;
         }
 
@@ -152,7 +171,7 @@
     });
 
     canvas.addEventListener('touchend', (e) => {
-        if (!gameStarted) return;
+        if (!gameStarted || gameOver) return;
 
         let touchEndX = e.changedTouches[0].screenX;
         let touchEndY = e.changedTouches[0].screenY;
@@ -172,7 +191,7 @@
     function update() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // --- NEW: Start Screen ---
+        // Start Screen
         if (!gameStarted) {
             ctx.fillStyle = "#4CAF50";
             ctx.font = "bold 32px sans-serif";
@@ -194,20 +213,18 @@
             ctx.fillStyle = "#666";
             ctx.fillText("Left = Der | Down = Die | Right = Das", canvas.width / 2, canvas.height / 2 + 90);
 
-            // Pulsing "Tap to Start" text
             ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 300); 
             ctx.fillStyle = "white";
             ctx.font = "bold 22px sans-serif";
             ctx.fillText("Tap or Press Any Key to Start", canvas.width / 2, canvas.height / 2 + 160);
-            ctx.globalAlpha = 1.0; // Reset alpha
+            ctx.globalAlpha = 1.0; 
 
             requestAnimationFrame(update);
-            return; // Stop the rest of the game logic from running
+            return; 
         }
-        // --------------------------
 
+        // Game Over Screen
         if (gameOver) {
-            // Draw Game Over Screen
             ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "white";
@@ -216,18 +233,22 @@
             if (isNewHighScore) {
                 ctx.fillStyle = "#FFD700"; 
                 ctx.font = "bold 28px sans-serif";
-                ctx.fillText("NEW HIGH SCORE!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillText("NEW HIGH SCORE!", canvas.width / 2, canvas.height / 2 - 60);
                 ctx.fillStyle = "white";
             } else {
                 ctx.font = "bold 24px sans-serif";
-                ctx.fillText("Game Over!", canvas.width / 2, canvas.height / 2 - 30);
+                ctx.fillText("Game Over!", canvas.width / 2, canvas.height / 2 - 50);
             }
 
             ctx.font = "18px sans-serif";
-            ctx.fillText("Score: " + score, canvas.width / 2, canvas.height / 2 + 10);
-            ctx.font = "14px sans-serif";
-            ctx.fillStyle = "#aaa";
-            ctx.fillText("Refresh the page to play again", canvas.width / 2, canvas.height / 2 + 50);
+            ctx.fillText("Score: " + score, canvas.width / 2, canvas.height / 2 - 10);
+            
+            // --- NEW: Pulsing Play Again Text ---
+            ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 300); 
+            ctx.fillStyle = "#4CAF50";
+            ctx.font = "bold 22px sans-serif";
+            ctx.fillText("Tap to Play Again", canvas.width / 2, canvas.height / 2 + 50);
+            ctx.globalAlpha = 1.0;
             
             requestAnimationFrame(update);
             return;
