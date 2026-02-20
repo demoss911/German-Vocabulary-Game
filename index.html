@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Article Sorter - With Audio</title>
+    <title>Article Sorter - Fixed Audio</title>
     <style>
         body { 
             margin: 0; 
@@ -32,19 +32,29 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // --- NEW: Audio Setup ---
-    // Creates an audio context to synthesize sounds
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = new AudioContext();
+    // --- NEW: Lazy Audio Initialization ---
+    let audioCtx;
+
+    function initAudio() {
+        // Only create the context if it doesn't exist yet
+        if (!audioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+        }
+        // Force it to wake up if the browser put it to sleep
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
 
     function playPopSound() {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!audioCtx) return;
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         osc.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         
-        osc.type = 'sine'; // Smooth, pure tone
+        osc.type = 'sine'; 
         osc.frequency.setValueAtTime(600, audioCtx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
         
@@ -56,13 +66,13 @@
     }
 
     function playErrorSound() {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!audioCtx) return;
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         osc.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         
-        osc.type = 'sawtooth'; // Harsh, buzzy tone
+        osc.type = 'sawtooth'; 
         osc.frequency.setValueAtTime(150, audioCtx.currentTime);
         osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
         
@@ -72,7 +82,7 @@
         osc.start();
         osc.stop(audioCtx.currentTime + 0.3);
     }
-    // ------------------------
+    // --------------------------------------
 
     // Game State
     let score = 0;
@@ -148,7 +158,7 @@
 
     function triggerGameOver() {
         if (!gameOver) {
-            playErrorSound(); // Trigger buzz sound
+            playErrorSound(); 
             gameOver = true;
             if (score > highScore) {
                 highScore = score;
@@ -167,7 +177,7 @@
         if (direction === "RIGHT") guessedArticle = "Das";
 
         if (guessedArticle === currentWord.article) {
-            playPopSound(); // Trigger pop sound
+            playPopSound(); 
             createParticles(currentWord.x, currentWord.y - 10);
             score++;
             spawnWord();
@@ -178,9 +188,9 @@
 
     // Keyboard Controls
     window.addEventListener('keydown', (e) => {
+        initAudio(); // Wakes up audio immediately on key press
+
         if (!gameStarted) {
-            // Must resume audio context on first user interaction
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             gameStarted = true;
             return;
         }
@@ -200,9 +210,9 @@
     let touchStartY = 0;
 
     canvas.addEventListener('touchstart', (e) => {
+        initAudio(); // Wakes up audio immediately on screen tap
+
         if (!gameStarted) {
-            // Must resume audio context on first user interaction
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             gameStarted = true;
             return;
         }
