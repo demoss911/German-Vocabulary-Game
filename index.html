@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Article Sorter - Instant Restart</title>
+    <title>Article Sorter - With Audio</title>
     <style>
         body { 
             margin: 0; 
@@ -31,6 +31,48 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+
+    // --- NEW: Audio Setup ---
+    // Creates an audio context to synthesize sounds
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    function playPopSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.type = 'sine'; // Smooth, pure tone
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    function playErrorSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.type = 'sawtooth'; // Harsh, buzzy tone
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+        
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+    }
+    // ------------------------
 
     // Game State
     let score = 0;
@@ -66,7 +108,6 @@
         };
     }
 
-    // --- NEW: Reset Game Function ---
     function resetGame() {
         score = 0;
         gameOver = false;
@@ -74,7 +115,6 @@
         particles = [];
         spawnWord();
     }
-    // --------------------------------
 
     function createParticles(x, y) {
         for (let i = 0; i < 15; i++) {
@@ -107,11 +147,14 @@
     }
 
     function triggerGameOver() {
-        gameOver = true;
-        if (score > highScore) {
-            highScore = score;
-            isNewHighScore = true;
-            localStorage.setItem('germanVocabHighScore', highScore);
+        if (!gameOver) {
+            playErrorSound(); // Trigger buzz sound
+            gameOver = true;
+            if (score > highScore) {
+                highScore = score;
+                isNewHighScore = true;
+                localStorage.setItem('germanVocabHighScore', highScore);
+            }
         }
     }
 
@@ -124,6 +167,7 @@
         if (direction === "RIGHT") guessedArticle = "Das";
 
         if (guessedArticle === currentWord.article) {
+            playPopSound(); // Trigger pop sound
             createParticles(currentWord.x, currentWord.y - 10);
             score++;
             spawnWord();
@@ -135,11 +179,12 @@
     // Keyboard Controls
     window.addEventListener('keydown', (e) => {
         if (!gameStarted) {
+            // Must resume audio context on first user interaction
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             gameStarted = true;
             return;
         }
 
-        // --- NEW: Restart on key press if game over ---
         if (gameOver) {
             resetGame();
             return;
@@ -156,11 +201,12 @@
 
     canvas.addEventListener('touchstart', (e) => {
         if (!gameStarted) {
+            // Must resume audio context on first user interaction
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             gameStarted = true;
             return;
         }
 
-        // --- NEW: Restart on tap if game over ---
         if (gameOver) {
             resetGame();
             return;
@@ -243,7 +289,6 @@
             ctx.font = "18px sans-serif";
             ctx.fillText("Score: " + score, canvas.width / 2, canvas.height / 2 - 10);
             
-            // --- NEW: Pulsing Play Again Text ---
             ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 300); 
             ctx.fillStyle = "#4CAF50";
             ctx.font = "bold 22px sans-serif";
