@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Article Sorter - Fixed Audio</title>
+    <title>Article Sorter - Pro Version</title>
     <style>
         body { 
             margin: 0; 
@@ -32,23 +32,33 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // --- NEW: Lazy Audio Initialization ---
+    // --- AUDIO SYSTEM (With iOS Unlock Hack) ---
     let audioCtx;
+    let audioUnlocked = false;
 
     function initAudio() {
-        // Only create the context if it doesn't exist yet
         if (!audioCtx) {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
         }
-        // Force it to wake up if the browser put it to sleep
+        
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
+        }
+
+        // iOS Hack: Play a silent buffer to permanently unlock audio
+        if (!audioUnlocked) {
+            const buffer = audioCtx.createBuffer(1, 1, 22050);
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioCtx.destination);
+            source.start(0);
+            audioUnlocked = true;
         }
     }
 
     function playPopSound() {
-        if (!audioCtx) return;
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         osc.connect(gainNode);
@@ -66,7 +76,7 @@
     }
 
     function playErrorSound() {
-        if (!audioCtx) return;
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         osc.connect(gainNode);
@@ -82,7 +92,7 @@
         osc.start();
         osc.stop(audioCtx.currentTime + 0.3);
     }
-    // --------------------------------------
+    // -------------------------------------------
 
     // Game State
     let score = 0;
@@ -92,16 +102,40 @@
     
     let highScore = localStorage.getItem('germanVocabHighScore') || 0;
     
-    // B2 Level German Nouns
+    // --- EXPANDED B2 VOCABULARY (50 Words) ---
     const vocab = [
-        { word: "Zusammenhang", article: "Der" },
-        { word: "Bedingung", article: "Die" },
-        { word: "Ergebnis", article: "Das" },
-        { word: "Vorteil", article: "Der" },
-        { word: "Entwicklung", article: "Die" },
-        { word: "Verhältnis", article: "Das" },
-        { word: "Bereich", article: "Der" },
-        { word: "Gesellschaft", article: "Die" }
+        // DER (Masculine)
+        { word: "Einfluss", article: "Der" }, { word: "Erfolg", article: "Der" },
+        { word: "Gedanke", article: "Der" }, { word: "Prozess", article: "Der" },
+        { word: "Staat", article: "Der" }, { word: "Verlust", article: "Der" },
+        { word: "Zweifel", article: "Der" }, { word: "Anspruch", article: "Der" },
+        { word: "Begriff", article: "Der" }, { word: "Betrieb", article: "Der" },
+        { word: "Eindruck", article: "Der" }, { word: "Fehler", article: "Der" },
+        { word: "Schutz", article: "Der" }, { word: "Verlag", article: "Der" },
+        { word: "Vertrag", article: "Der" }, { word: "Wert", article: "Der" },
+        { word: "Zweck", article: "Der" }, { word: "Zusammenhang", article: "Der" },
+        
+        // DIE (Feminine)
+        { word: "Erfahrung", article: "Die" }, { word: "Forderung", article: "Die" },
+        { word: "Grundlage", article: "Die" }, { word: "Herausforderung", article: "Die" },
+        { word: "Leistung", article: "Die" }, { word: "Maßnahme", article: "Die" },
+        { word: "Regel", article: "Die" }, { word: "Regierung", article: "Die" },
+        { word: "Sicherheit", article: "Die" }, { word: "Unterstützung", article: "Die" },
+        { word: "Ursache", article: "Die" }, { word: "Verfügung", article: "Die" },
+        { word: "Wirtschaft", article: "Die" }, { word: "Bedeutung", article: "Die" },
+        { word: "Eigenschaft", article: "Die" }, { word: "Entscheidung", article: "Die" },
+        { word: "Forschung", article: "Die" }, { word: "Gesellschaft", article: "Die" },
+        
+        // DAS (Neuter)
+        { word: "Angebot", article: "Das" }, { word: "Bewusstsein", article: "Das" },
+        { word: "Datum", article: "Das" }, { word: "Detail", article: "Das" },
+        { word: "Ereignis", article: "Das" }, { word: "Gesetz", article: "Das" },
+        { word: "Konzept", article: "Das" }, { word: "Modell", article: "Das" },
+        { word: "Risiko", article: "Das" }, { word: "System", article: "Das" },
+        { word: "Unternehmen", article: "Das" }, { word: "Verhalten", article: "Das" },
+        { word: "Wachstum", article: "Das" }, { word: "Ziel", article: "Das" },
+        { word: "Mitglied", article: "Das" }, { word: "Recht", article: "Das" },
+        { word: "Ergebnis", article: "Das" }
     ];
 
     let currentWord = null;
@@ -188,7 +222,7 @@
 
     // Keyboard Controls
     window.addEventListener('keydown', (e) => {
-        initAudio(); // Wakes up audio immediately on key press
+        initAudio(); // Force unlock audio on first interaction
 
         if (!gameStarted) {
             gameStarted = true;
@@ -210,7 +244,7 @@
     let touchStartY = 0;
 
     canvas.addEventListener('touchstart', (e) => {
-        initAudio(); // Wakes up audio immediately on screen tap
+        initAudio(); // Force unlock audio on first tap
 
         if (!gameStarted) {
             gameStarted = true;
