@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Article Sorter - High Score Edition</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background-color: #121212; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            touch-action: none; 
+        }
+        canvas { 
+            background-color: #1e1e1e; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Game State
+    let score = 0;
+    let gameOver = false;
+    let isNewHighScore = false;
+    
+    // --- NEW: Load High Score from Local Storage ---
+    // If there's no saved score, it defaults to 0
+    let highScore = localStorage.getItem('germanVocabHighScore') || 0;
+    
+    // B2 Level German Nouns
+    const vocab = [
+        { word: "Zusammenhang", article: "Der" },
+        { word: "Bedingung", article: "Die" },
+        { word: "Ergebnis", article: "Das" },
+        { word: "Vorteil", article: "Der" },
+        { word: "Entwicklung", article: "Die" },
+        { word: "Verhältnis", article: "Das" },
+        { word: "Bereich", article: "Der" },
+        { word: "Gesellschaft", article: "Die" }
+    ];
+
+    let currentWord = null;
+    let particles = []; 
+
+    function spawnWord() {
+        const randomVocab = vocab[Math.floor(Math.random() * vocab.length)];
+        currentWord = {
+            text: randomVocab.word,
+            article: randomVocab.article,
+            x: canvas.width / 2,
+            y: -30,
+            speed: 2 + (score * 0.2) 
+        };
+    }
+
+    function createParticles(x, y) {
+        for (let i = 0; i < 15; i++) {
+            particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                life: 1.0, 
+                decay: Math.random() * 0.05 + 0.02, 
+                size: Math.random() * 4 + 2
+            });
+        }
+    }
+
+    function drawAndVerifyParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= p.decay;
+
+            if (p.life > 0) {
+                ctx.fillStyle = `rgba(76, 175, 80, ${p.life})`; 
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            } else {
+                particles.splice(i, 1);
+            }
+        }
+    }
+
+    // --- NEW: End Game Logic ---
+    function triggerGameOver() {
+        gameOver = true;
+        // Check if current score beats the saved high score
+        if (score > highScore) {
+            highScore = score;
+            isNewHighScore = true;
+            // Save the new high score to the browser's memory
+            localStorage.setItem('germanVocabHighScore', highScore);
+        }
+    }
+
+    // Controls Logic
+    function handleInput(direction) {
+        if (gameOver || !currentWord) return;
+
+        let guessedArticle = "";
+        if (direction === "LEFT") guessedArticle = "Der";
+        if (direction === "DOWN") guessedArticle = "Die";
+        if (direction === "RIGHT") guessedArticle = "Das";
+
+        if (guessedArticle === currentWord.article) {
+            createParticles(currentWord.x, currentWord.y - 10);
+            score++;
+            spawnWord();
+        } else {
+            triggerGameOver();
+        }
+    }
+
+    // Keyboard Controls
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') handleInput("LEFT");
+        if (e.key === 'ArrowDown') handleInput("DOWN");
+        if (e.key === 'ArrowRight') handleInput("RIGHT");
+    });
+
+    // Touch/Swipe Controls
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    canvas.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    });
+
+    canvas.addEventListener('touchend', (e) => {
+        let touchEndX = e.changedTouches[0].screenX;
+        let touchEndY = e.changedTouches[0].screenY;
+        
+        let dx = touchEndX - touchStartX;
+        let dy = touchEndY - touchStartY;
+
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+            if (dx < 0) handleInput("LEFT");
+            else handleInput("RIGHT");
+        } else if (Math.abs(dy) > 30 && dy > 0) {
+            handleInput("DOWN");
+        }
+    });
+
+    // Main Game Loop
+    function update() {
+        if (gameOver) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw UI Buckets
+        ctx.fillStyle = "#666";
+        ctx.font = "14px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("<- DER", 20, canvas.height - 30);
+        ctx.textAlign = "center";
+        ctx.fillText("v DIE v", canvas.width / 2, canvas.height - 30);
+        ctx.textAlign = "right";
+        ctx.fillText("DAS ->", canvas.width - 20, canvas.height - 30);
+
+        // Draw Current Score (Top Left)
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "left";
+        ctx.font = "18px sans-serif";
+        ctx.fillText("Score: " + score, 20, 40);
+
+        // --- NEW: Draw High Score (Top Right) ---
+        ctx.fillStyle = "#FFD700"; // Gold color
+        ctx.textAlign = "right";
+        ctx.fillText("Best: " + highScore, canvas.width - 20, 40);
+
+        // Draw Particles
+        drawAndVerifyParticles();
+
+        // Update and Draw Word
+        if (currentWord) {
+            currentWord.y += currentWord.speed;
+            
+            ctx.fillStyle = "#4CAF50";
+            ctx.font = "bold 28px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(currentWord.text, currentWord.x, currentWord.y);
+
+            // Trigger game over if it hits bottom
+            if (currentWord.y > canvas.height - 60) {
+                triggerGameOver();
+            }
+        }
+
+        requestAnimationFrame(update);
+
+        // Draw Game Over Screen
+        if (gameOver) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            
+            if (isNewHighScore) {
+                ctx.fillStyle = "#FFD700"; // Gold
+                ctx.font = "bold 28px sans-serif";
+                ctx.fillText("NEW HIGH SCORE!", canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillStyle = "white";
+            } else {
+                ctx.font = "bold 24px sans-serif";
+                ctx.fillText("Game Over!", canvas.width / 2, canvas.height / 2 - 30);
+            }
+
+            ctx.font = "18px sans-serif";
+            ctx.fillText("Score: " + score, canvas.width / 2, canvas.height / 2 + 10);
+            ctx.font = "14px sans-serif";
+            ctx.fillStyle = "#aaa";
+            ctx.fillText("Refresh the page to play again", canvas.width / 2, canvas.height / 2 + 50);
+        }
+    }
+
+    // Start Game
+    spawnWord();
+    update();
+
+</script>
+</body>
+</html>
